@@ -1,0 +1,40 @@
+# Tetra Detector - Dual SDR Configuratie
+# Twee RTL-SDR dongles voor volledige Tetra coverage
+
+sdr:
+  mode: multi
+  
+  devices:
+    # SDR #0 - Tetra mobile 380MHz - 382.5MHz
+    - index: 0
+      name: "Tetra Mobile 380MHz - 382.5MHz"
+      center_frequency: 381.25  # MHz - dekt 380MHz - 382.5MHz
+      sample_rate: 2.4         # MHz
+      gain: auto
+      ppm_correction: 0
+    
+    # SDR #1 - Tetra mobile 382.5MHz - 385mhz
+    - index: 1
+      name: "Tetra Mobile 382.5MHz - 385mhz"
+      center_frequency: 383.5  # MHz - dekt 382MHz - 385MHz
+      sample_rate: 2.4         # MHz
+      gain: auto
+      ppm_correction: 0
+
+detection:
+  threshold: -50
+  scan_interval: 0.5
+  samples: 262144
+
+display:
+  bar_width: 20      # Smaller voor dual display
+  power_range_min: -80
+  power_range_max: -20
+  use_colors: true
+  show_device_names: true
+
+logging:
+  enabled: true
+  directory: ./logs
+  filename_format: "tetra_dual_%Y%m%d.log"
+  level: INFO

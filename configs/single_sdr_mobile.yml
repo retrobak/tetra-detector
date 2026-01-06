@@ -1,0 +1,31 @@
+# Tetra Detector - Single SDR Mobiele Band
+# Focus op Tetra portofoons (380-385 MHz)
+
+sdr:
+  mode: single
+  
+  devices:
+    - index: 0
+      name: "Tetra Mobile"
+      center_frequency: 382.5  # Optimaal midden van mobiele band
+      sample_rate: 2.4         # Dekt ongeveer 381.3-383.7 MHz
+      gain: auto
+      ppm_correction: 0        # Vul in na calibratie
+
+detection:
+  threshold: -50
+  scan_interval: 0.5
+  samples: 262144
+
+display:
+  bar_width: 30
+  power_range_min: -80
+  power_range_max: -20
+  use_colors: true
+  show_device_names: false
+
+logging:
+  enabled: true
+  directory: ./logs
+  filename_format: "tetra_mobile_%Y%m%d.log"
+  level: INFO

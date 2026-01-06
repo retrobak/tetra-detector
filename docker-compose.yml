@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Single SDR - Default Tetra Mobile
+  tetra-detector:
+    build: .
+    container_name: tetra_detector
+    privileged: true
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    volumes:
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+    command: python -u tetra_detector.py --config=/app/configs/config.yml
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Dual SDR - Voor beide Tetra banden
+  tetra-dual:
+    build: .
+    container_name: tetra_detector_dual
+    privileged: true
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    volumes:
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+    command: python -u tetra_detector.py --config=/app/configs/dual_sdr.yml
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    profiles:
+      - dual
+
+  # FM Calibratie
+  fm-calibration:
+    build: .
+    container_name: fm_calibration
+    privileged: true
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    volumes:
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+    command: python -u tetra_detector.py --config=/app/configs/fm_calibration.yml
+    stdin_open: true
+    tty: true
+    profiles:
+      - calibrate
+
+  # Demo mode (zonder hardware)
+  demo:
+    build: .
+    container_name: tetra_demo
+    volumes:
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+    command: python -u tetra_detector.py --config=/app/configs/config.yml --demo
+    stdin_open: true
+    tty: true
+    profiles:
+      - demo

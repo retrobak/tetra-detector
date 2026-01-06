@@ -1,0 +1,31 @@
+# Tetra Detector - Single SDR Basisstations
+# Focus op Tetra basisstations/masten (390-395 MHz)
+
+sdr:
+  mode: single
+  
+  devices:
+    - index: 0
+      name: "Tetra Base"
+      center_frequency: 392.5  # Midden van base station band
+      sample_rate: 2.4         # Dekt ongeveer 391.3-393.7 MHz
+      gain: auto
+      ppm_correction: 0
+
+detection:
+  threshold: -45  # Base stations zijn vaak iets sterker
+  scan_interval: 0.5
+  samples: 262144
+
+display:
+  bar_width: 30
+  power_range_min: -80
+  power_range_max: -20
+  use_colors: true
+  show_device_names: false
+
+logging:
+  enabled: true
+  directory: ./logs
+  filename_format: "tetra_base_%Y%m%d.log"
+  level: INFO

@@ -1,0 +1,40 @@
+# Tetra Detector - FM Radio Calibratie
+# Gebruik deze config om PPM offset te bepalen met een bekende FM frequentie
+
+sdr:
+  mode: single
+  
+  devices:
+    - index: 0
+      name: "P2000 Scanner"
+      center_frequency: 169.65  # P2000 frequentie
+      sample_rate: 2.4
+      gain: auto
+      ppm_correction: 0  # Start met 0, pas aan tot signaal precies klopt
+
+detection:
+  threshold: -55  # Lager voor FM signalen (meestal sterker)
+  scan_interval: 1
+  samples: 262144
+
+display:
+  bar_width: 30
+  power_range_min: -80
+  power_range_max: -10  # FM is sterker, hogere max
+  use_colors: true
+  show_device_names: false
+
+logging:
+  enabled: true
+  directory: ./logs
+  filename_format: "p2000_%Y%m%d.log"
+  level: INFO
+
+# CALIBRATIE INSTRUCTIES:
+# 1. Start detector met deze config
+# 2. Kijk of je een sterk signaal ziet rond de ingestelde frequentie
+# 3. Als signaal niet precies op 100.7 MHz zit:
+#    - Te laag? Gebruik negatieve ppm_correction (bijv. -10)
+#    - Te hoog? Gebruik positieve ppm_correction (bijv. +10)
+# 4. Pas ppm_correction stap voor stap aan tot signaal exact klopt
+# 5. Gebruik gevonden waarde in je Tetra config!

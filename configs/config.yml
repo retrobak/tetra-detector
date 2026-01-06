@@ -1,0 +1,35 @@
+# Tetra Detector - Default Configuratie
+# Enkele SDR voor Tetra mobiele apparaten (380-385 MHz)
+
+# SDR Instellingen
+sdr:
+  mode: single  # 'single' of 'multi'
+  
+  devices:
+    - index: 0
+      name: "Tetra Mobile"
+      center_frequency: 382.5  # MHz - midden van 380-385 MHz band
+      sample_rate: 2.4         # MHz - max voor goedkope RTL-SDR
+      gain: auto               # 'auto' of waarde 0-50
+      ppm_correction: 0        # PPM offset (-50 tot +50, negatief = tune hoger)
+
+# Detectie Instellingen
+detection:
+  threshold: -50      # dBm - signaal boven deze waarde = detectie
+  scan_interval: 0.5  # seconden tussen scans
+  samples: 262144     # aantal samples per scan (256*1024)
+
+# Display Instellingen
+display:
+  bar_width: 30              # breedte van progress bar
+  power_range_min: -80       # minimum dBm voor visualisatie
+  power_range_max: -20       # maximum dBm voor visualisatie
+  use_colors: true           # gebruik kleuren in output
+  show_device_names: true    # toon device namen (voor multi-SDR)
+
+# Logging Instellingen
+logging:
+  enabled: true
+  directory: ./logs
+  filename_format: "tetra_detector_%Y%m%d.log"
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
