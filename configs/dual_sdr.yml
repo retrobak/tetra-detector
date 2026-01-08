@@ -22,9 +22,15 @@ sdr:
       ppm_correction: 0
 
 detection:
-  threshold: -50
+  threshold: -50  # Base threshold (ignored if adaptive enabled)
   scan_interval: 0.5
   samples: 262144
+  
+  # Adaptive threshold detection
+  adaptive:
+    enabled: true              # Enable adaptive threshold
+    noise_floor_window: 20     # Number of samples to calculate noise floor
+    threshold_margin: 8        # dBm above noise floor to trigger detection
 
 display:
   bar_width: 20      # Smaller voor dual display

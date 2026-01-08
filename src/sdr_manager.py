@@ -51,7 +51,20 @@ class SDRDevice:
         
         self.sdr.center_freq = corrected_freq
         self.sdr.sample_rate = self.config['sample_rate'] * 1e6
-        self.sdr.gain = self.config['gain']
+        
+        # Set gain
+        gain = self.config['gain']
+        if gain == 'auto':
+            self.sdr.gain = 'auto'
+        else:
+            gains = self.sdr.gain_values
+            if gain in gains:
+                self.sdr.gain = gain
+            else:
+                # Find closest valid gain
+                closest = min(gains, key=lambda x: abs(x - gain))
+                self.sdr.gain = closest
+                print(f"⚠️  Gain {gain} not valid for this tuner, using {closest}")
         
         # Don't try to set freq_correction as this device doesn't support it
     
@@ -81,12 +94,17 @@ class SDRDevice:
     
     def get_info(self) -> Dict[str, Any]:
         """Haal device info op"""
+        if self.sdr and self.config['gain'] != 'auto':
+            actual_gain = self.sdr.gain
+        else:
+            actual_gain = self.config['gain']
+        
         return {
             'index': self.config['index'],
             'name': self.config['name'],
             'frequency': self.config['center_frequency'],
             'sample_rate': self.config['sample_rate'],
-            'gain': self.config['gain'],
+            'gain': actual_gain,
             'mode': 'DEMO' if self.demo_mode else 'LIVE'
         }
     

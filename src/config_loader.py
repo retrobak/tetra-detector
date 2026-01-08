@@ -67,7 +67,12 @@ class ConfigLoader:
             'detection': {
                 'threshold': -50,
                 'scan_interval': 0.5,
-                'samples': 262144
+                'samples': 262144,
+                'adaptive': {
+                    'enabled': False,
+                    'noise_floor_window': 20,
+                    'threshold_margin': 8
+                }
             },
             'display': {
                 'bar_width': 30,

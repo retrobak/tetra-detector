@@ -15,9 +15,15 @@ sdr:
 
 # Detectie Instellingen
 detection:
-  threshold: -50      # dBm - signaal boven deze waarde = detectie
-  scan_interval: 0.5  # seconden tussen scans
-  samples: 262144     # aantal samples per scan (256*1024)
+  threshold: -50  # Base threshold (ignored if adaptive enabled)
+  scan_interval: 1
+  samples: 262144
+  
+  # Adaptive threshold detection
+  adaptive:
+    enabled: true              # Enable adaptive threshold
+    noise_floor_window: 20     # Number of samples to calculate noise floor
+    threshold_margin: 8        # dBm above noise floor to trigger detection
 
 # Display Instellingen
 display:

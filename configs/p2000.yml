@@ -13,9 +13,15 @@ sdr:
       ppm_correction: 0  # Start met 0, pas aan tot signaal precies klopt
 
 detection:
-  threshold: -55  # Lager voor FM signalen (meestal sterker)
+  threshold: -50  # Base threshold (ignored if adaptive enabled)
   scan_interval: 1
   samples: 262144
+  
+  # Adaptive threshold detection
+  adaptive:
+    enabled: true              # Enable adaptive threshold
+    noise_floor_window: 20     # Number of samples to calculate noise floor
+    threshold_margin: 8        # dBm above noise floor to trigger detection
 
 display:
   bar_width: 30
@@ -32,9 +38,14 @@ logging:
 
 # CALIBRATIE INSTRUCTIES:
 # 1. Start detector met deze config
-# 2. Kijk of je een sterk signaal ziet rond de ingestelde frequentie
-# 3. Als signaal niet precies op 100.7 MHz zit:
-#    - Te laag? Gebruik negatieve ppm_correction (bijv. -10)
-#    - Te hoog? Gebruik positieve ppm_correction (bijv. +10)
-# 4. Pas ppm_correction stap voor stap aan tot signaal exact klopt
-# 5. Gebruik gevonden waarde in je Tetra config!
+# 2. Met adaptive threshold enabled, wacht 5-10 scans tot noise floor is berekend
+# 3. Systeem past automatisch threshold aan: noise floor + 8 dBm margin
+# 4. Je ziet NF (noise floor) en Thr (threshold) in de output
+# 5. Als je te veel/weinig detecties krijgt, pas threshold_margin aan:
+#    - Meer margin = minder gevoelig (bijv. 10 dBm)
+#    - Minder margin = gevoeliger (bijv. 5 dBm)
+#
+# ADAPTIVE THRESHOLD:
+# - enabled: true/false - schakel adaptive detection in/uit
+# - noise_floor_window: aantal samples voor noise floor berekening (20 = ~20 seconden)
+# - threshold_margin: hoeveel dBm boven noise floor is een detectie

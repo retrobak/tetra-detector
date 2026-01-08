@@ -9,7 +9,7 @@ sdr:
       name: "FM Calibration"
       center_frequency: 97.5  # NPO Radio 1 (pas aan voor jouw regio)
       sample_rate: 2.4
-      gain: 20
+      gain: 40
       ppm_correction: 0  # Start met 0, pas aan tot signaal precies klopt
       
       # Andere Nederlandse FM stations voor calibratie:
