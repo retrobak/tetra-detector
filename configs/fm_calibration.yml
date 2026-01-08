@@ -32,7 +32,7 @@ display:
   show_device_names: false
 
 logging:
-  enabled: true
+  enabled: false
   directory: ./logs
   filename_format: "fm_calibration_%Y%m%d.log"
   level: INFO

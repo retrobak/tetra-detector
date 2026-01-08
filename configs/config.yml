@@ -35,7 +35,7 @@ display:
 
 # Logging Instellingen
 logging:
-  enabled: true
+  enabled: false
   directory: ./logs
   filename_format: "tetra_detector_%Y%m%d.log"
   level: INFO  # DEBUG, INFO, WARNING, ERROR

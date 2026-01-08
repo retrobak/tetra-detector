@@ -31,7 +31,7 @@ display:
   show_device_names: false
 
 logging:
-  enabled: true
+  enabled: false
   directory: ./logs
   filename_format: "p2000_%Y%m%d.log"
   level: INFO

@@ -330,13 +330,7 @@ Simple 1/4 wave voor 382 MHz:
 ## 🔮 Roadmap
 
 - [ ] Web dashboard met real-time grafieken
-- [ ] E-ink display support voor Pi Zero
-- [ ] GPS logging van detecties
-- [ ] Webhook/notificaties (Telegram, Discord)
-- [ ] Spectrum waterfall visualisatie
-- [ ] Database storage (SQLite/PostgreSQL)
 - [ ] Audio alerts bij detectie
-- [ ] Mobile app (React Native)
 
 ## 🤝 Contributing
 

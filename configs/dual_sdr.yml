@@ -40,7 +40,7 @@ display:
   show_device_names: true
 
 logging:
-  enabled: true
+  enabled: false
   directory: ./logs
   filename_format: "tetra_dual_%Y%m%d.log"
   level: INFO
