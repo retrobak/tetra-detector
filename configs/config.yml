@@ -18,6 +18,7 @@ detection:
   threshold: -50  # Base threshold (ignored if adaptive enabled)
   scan_interval: 1
   samples: 262144
+  pulse_window_seconds: 4.0  # Time window to detect pulses (for pulsed signals like TETRA)
   
   # Adaptive threshold detection
   adaptive:
@@ -32,6 +33,7 @@ display:
   power_range_max: -20       # maximum dBm voor visualisatie
   use_colors: true           # gebruik kleuren in output
   show_device_names: true    # toon device namen (voor multi-SDR)
+  show_debug_info: false      # toon debug informatie tabel
 
 # Logging Instellingen
 logging:

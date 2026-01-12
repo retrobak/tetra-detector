@@ -29,11 +29,20 @@ class TetraDetector:
         self.total_detections = 0
         self.running = True
         self.log_file = None
+        self.display_initialized = False
         
         # Adaptive threshold tracking
         self.noise_floor_history = {}  # Per device: deque of recent power readings
         self.noise_floor = {}  # Per device: calculated noise floor
         self.dynamic_threshold = {}  # Per device: dynamic detection threshold
+        
+        # Pulse window tracking for pulsed signals
+        self.pulse_window_seconds = self.config['detection'].get('pulse_window_seconds', 4.0)
+        self.signal_history = {}  # Per device: deque of (timestamp, power_db) tuples
+        self.peak_in_window = {}  # Per device: peak signal strength in window
+        self.previous_peak = {}  # Per device: previous peak for trend detection
+        self.last_detection_peak = {}  # Per device: peak from last detection window
+        self.last_detection_time = {}  # Per device: timestamp of last detection
         
         # Initialize detection counters and adaptive tracking
         adaptive_config = self.config['detection'].get('adaptive', {})
@@ -41,11 +50,20 @@ class TetraDetector:
         self.noise_floor_window = adaptive_config.get('noise_floor_window', 20)
         self.threshold_margin = adaptive_config.get('threshold_margin', 8)
         
+        # Display configuration
+        display_config = self.config.get('display', {})
+        self.show_debug_info = display_config.get('show_debug_info', True)
+        
         for i in range(self.sdr_manager.get_device_count()):
             self.detection_counts[i] = 0
             self.noise_floor_history[i] = deque(maxlen=self.noise_floor_window)
             self.noise_floor[i] = None
             self.dynamic_threshold[i] = self.config['detection']['threshold']
+            self.signal_history[i] = deque()  # No maxlen - we'll trim by time
+            self.peak_in_window[i] = -100.0  # Start with very low value
+            self.previous_peak[i] = -100.0
+            self.last_detection_peak[i] = -100.0  # Start with very low value
+            self.last_detection_time[i] = None  # No detection yet
         
         # Setup logging
         if self.config['logging']['enabled']:
@@ -92,76 +110,111 @@ class TetraDetector:
         return max(0, min(100, normalized))
     
     def display_status(self, results: List[Dict[str, Any]]):
-        """Toon status in CLI voor alle devices"""
+        """Toon status in CLI voor alle devices - fixed position display"""
         timestamp = datetime.now().strftime("%H:%M:%S")
         use_colors = self.config['display']['use_colors']
         
         detected_any = any(result['detected'] for result in results)
-        if use_colors:
-            if detected_any:
-                # Make everything red for attention
-                reset = Style.RESET_ALL
-                green = Fore.RED
-                red = Fore.RED
-                yellow = Fore.RED
-            else:
-                reset = Style.RESET_ALL
-                green = Fore.GREEN
-                red = Fore.RED
-                yellow = Fore.YELLOW
-        else:
-            reset = green = red = yellow = ""
         
-        # Clear line
-        print(f"\r{' ' * 120}\r", end='')
+        if use_colors:
+            reset = Style.RESET_ALL
+            green = Fore.GREEN
+            red = Fore.RED
+            yellow = Fore.YELLOW
+            cyan = Fore.CYAN
+            dim = Style.DIM
+        else:
+            reset = green = red = yellow = cyan = dim = ""
         
         devices_info = self.sdr_manager.get_devices_info()
+        is_multi = self.sdr_manager.is_multi_device()
         
-        if self.sdr_manager.is_multi_device():
-            # Multi-device display
-            print(f"\r{yellow}{timestamp}{reset}", end='')
-            
-            for result in results:
-                normalized = self.normalize_power(result['power_db'])
-                bar = self.create_bar(normalized, 100)
-                
-                color = red if result['detected'] else green
-                status = "🚨" if result['detected'] else "🔍"
-                
-                device_name = result['device_name'][:12]  # Truncate lange namen
-                count = self.detection_counts[result['device_index']]
-                gain = devices_info[result['device_index']]['gain']
-                
-                # Add adaptive info if enabled
-                adaptive_info = ""
-                if self.adaptive_enabled and result.get('noise_floor') is not None:
-                    adaptive_info = f" NF:{result['noise_floor']:.0f} T:{result['threshold']:.0f}"
-                
-                print(f" | {color}{status}{reset} {device_name}: {bar} {result['power_db']:.1f}dBm{adaptive_info} ({count}) G:{gain}", end='')
+        # Calculate number of lines needed
+        lines_needed = 6  # Fixed layout: header(3) + status(2) + bottom border(1)
+        if self.show_debug_info:
+            lines_needed += 6  # Debug section: header(2) + table header(2) + device rows + bottom border(1)
+            if is_multi:
+                lines_needed += 1  # Extra line for second device
+        
+        # Clear screen and move to top if display was initialized
+        if self.display_initialized:
+            print("\033[2J\033[H", end='')  # Clear screen and move cursor to top
+        
+        # Main display - show signal from last detection/pulse window
+        main_result = results[0]
+        
+        # Check if last detection is still valid (within pulse_window + 1 second)
+        current_time = time.time()
+        reset_timeout = self.pulse_window_seconds + 1.0
+        
+        if (self.last_detection_time[0] is not None and 
+            self.last_detection_peak[0] > -90 and 
+            current_time - self.last_detection_time[0] <= reset_timeout):
+            # Valid recent detection
+            display_power = self.last_detection_peak[0]
+            display_label = "Last Detection"
         else:
-            # Single device display
-            result = results[0]
-            normalized = self.normalize_power(result['power_db'])
-            bar = self.create_bar(normalized, 100)
+            # No recent detection or timed out - show noise floor or default
+            if self.noise_floor[0] is not None:
+                display_power = self.noise_floor[0]  # Use established noise floor
+            else:
+                display_power = -80.0  # Default baseline when no noise floor established
+            display_label = "No Signal"
+        
+        normalized = self.normalize_power(display_power)
+        bar = self.create_bar(normalized, 100)
+        bar_color = red if detected_any else green
+        
+        # Status text
+        status_text = "DETECTING!" if detected_any else display_label
+        status_color = red if detected_any else green
+        
+        # Build display
+        print(f"\033[2K{cyan}{'═'*63}{reset}")
+        print(f"\033[2K{cyan} {reset} │ {timestamp} │ {status_color}{status_text}{reset}")
+        print(f"\033[2K{cyan}{'═'*63}{reset}")
+        print(f"\033[2K")
+        print(f"\033[2K{bar_color}  {bar}  {display_power:>6.1f} dBm{reset}")
+        print(f"\033[2K")
+        
+        # Debug information section (conditional)
+        if self.show_debug_info:
+            print(f"\033[2K{cyan}{'═'*63}{reset}")
+            print(f"\033[2K{cyan}  Debug information:{reset}")
+            print(f"\033[2K{cyan}{'═'*63}{reset}")
             
-            color = red if result['detected'] else green
-            status = "🚨 DETECTIE!" if result['detected'] else "🔍 Scanning..."
+            # Table header
+            print(f"\033[2K   {dim}│{reset} Current   {dim}│{reset} Peak     {dim}│{reset} Gain {dim}│{reset}    NF  {dim}│{reset} Threshold")
+            print(f"\033[2K{dim}───╬───────────┼──────────┼──────┼────────┼────────────────{reset}")
             
-            gain = devices_info[0]['gain']
+            # Table rows - one per device
+            for result in results:
+                device_idx = result['device_index']
+                peak = self.peak_in_window[device_idx]
+                prev_peak = self.previous_peak[device_idx]
+                trend = "↑" if peak > prev_peak + 1 else "↓" if peak < prev_peak - 1 else "─"
+                
+                gain = str(devices_info[device_idx]['gain']).ljust(4)
+                
+                # Color the row if this device detected
+                row_color = red if result['detected'] else ""
+                
+                nf_str = f"{result['noise_floor']:>6.1f}" if result.get('noise_floor') is not None else "    --"
+                thr_str = f"{result['threshold']:>6.1f}" if result.get('threshold') is not None else "    --"
+                
+                print(f"\033[2K{row_color}#{device_idx+1} {dim}│{reset} {result['power_db']:>6.1f} dBm {dim}│{reset} {peak:>6.1f} {trend} {dim}│{reset} {gain} {dim}│{reset} {nf_str} {dim}│{reset} {thr_str}{reset}")
             
-            # Add adaptive info if enabled
-            adaptive_info = ""
-            if self.adaptive_enabled and result.get('noise_floor') is not None:
-                adaptive_info = f" | NF: {result['noise_floor']:.1f} | Thr: {result['threshold']:.1f}"
-            
-            print(f"\r{color}{timestamp}{reset} | {bar} | {result['power_db']:.1f} dBm{adaptive_info} | Gain: {gain} | {status} | Count: {self.total_detections}", end='')
+            print(f"\033[2K{cyan}{'═'*63}{reset}")
+        else:
+            print(f"\033[2K{cyan}{'═'*63}{reset}")
         
         sys.stdout.flush()
+        self.display_initialized = True
     
     def print_header(self):
         """Print header met device info"""
         print("\n" + "="*100)
-        print("  TETRA DETECTOR - Multi-SDR RF Signal Monitor")
+        print("  Multi-SDR RF Signal Monitor")
         print("="*100)
         
         devices_info = self.sdr_manager.get_devices_info()
@@ -198,6 +251,27 @@ class TetraDetector:
             # Set dynamic threshold: noise floor + margin
             self.dynamic_threshold[device_index] = self.noise_floor[device_index] + self.threshold_margin
     
+    def update_pulse_window(self, device_index: int, power_db: float):
+        """Update signal history and track peak signal in time window"""
+        current_time = time.time()
+        
+        # Add current reading to history
+        self.signal_history[device_index].append((current_time, power_db))
+        
+        # Remove old readings outside the pulse window
+        cutoff_time = current_time - self.pulse_window_seconds
+        while self.signal_history[device_index] and self.signal_history[device_index][0][0] < cutoff_time:
+            self.signal_history[device_index].popleft()
+        
+        # Calculate peak signal in the window
+        if self.signal_history[device_index]:
+            self.previous_peak[device_index] = self.peak_in_window[device_index]
+            self.peak_in_window[device_index] = max(
+                reading[1] for reading in self.signal_history[device_index]
+            )
+        else:
+            self.peak_in_window[device_index] = power_db
+    
     def run(self):
         """Main detection loop"""
         self.print_header()
@@ -223,18 +297,24 @@ class TetraDetector:
                     # Update noise floor tracking
                     self.update_noise_floor(device_idx, result['power_db'], result['detected'])
                     
+                    # Update pulse window tracking
+                    self.update_pulse_window(device_idx, result['power_db'])
+                    
                     if result['detected']:
                         self.detection_counts[device_idx] += 1
                         self.total_detections += 1
                         
-                        # Log detectie
-                        print()  # Nieuwe regel
+                        # Store the peak from this detection window
+                        self.last_detection_peak[device_idx] = self.peak_in_window[device_idx]
+                        # Record the timestamp of this detection
+                        self.last_detection_time[device_idx] = time.time()
+                        
+                        # Log detectie (to file only, no console print)
                         msg = (f"⚠️  [{datetime.now().strftime('%H:%M:%S')}] "
                               f"{result['device_name']}: Signaal gedetecteerd op "
                               f"{result['frequency']:.2f} MHz @ {result['power_db']:.1f} dBm")
                         if self.adaptive_enabled and result['noise_floor'] is not None:
                             msg += f" (noise floor: {result['noise_floor']:.1f} dBm, threshold: {result['threshold']:.1f} dBm)"
-                        print(msg)
                         self.log(msg)
                 
                 # Display status
@@ -244,17 +324,17 @@ class TetraDetector:
                 time.sleep(self.config['detection']['scan_interval'])
                 
         except KeyboardInterrupt:
-            print("\n\n✓ Detector gestopt")
             self.cleanup()
+            print("\n✓ Detector gestopt")
     
     def cleanup(self):
         """Cleanup resources"""
         self.sdr_manager.close_all()
         
-        print(f"\nTotaal detecties: {self.total_detections}")
+        print(f"Totaal detecties: {self.total_detections}")
         
         if self.sdr_manager.is_multi_device():
-            print("\nPer device:")
+            print("Per device:")
             for idx, count in self.detection_counts.items():
                 devices = self.sdr_manager.get_devices_info()
                 name = devices[idx]['name'] if idx < len(devices) else f"Device {idx}"
